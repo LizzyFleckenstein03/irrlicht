@@ -112,6 +112,7 @@
 #include "IVertexBuffer.h"
 #include "IVideoDriver.h"
 #include "IWriteFile.h"
+#include "ILightManager.h"
 #include "Keycodes.h"
 #include "line2d.h"
 #include "line3d.h"

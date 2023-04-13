@@ -102,6 +102,7 @@ namespace scene
 	class IBillboardSceneNode;
 	class ICameraSceneNode;
 	class IDummyTransformationSceneNode;
+	class ILightManager;
 	class ILightSceneNode;
 	class IMesh;
 	class IMeshBuffer;
@@ -649,6 +650,11 @@ namespace scene
 
 		//! Get ambient color of the scene
 		virtual const video::SColorf& getAmbientLight() const = 0;
+
+		//! Register a custom callbacks manager which gets callbacks during scene rendering.
+		/** \param[in] lightManager: the new callbacks manager. You may pass 0 to remove the
+			current callbacks manager and restore the default behavior. */
+		virtual void setLightManager(ILightManager* lightManager) = 0;
 
 		//! Get current render pass.
 		virtual E_SCENE_NODE_RENDER_PASS getCurrentRenderPass() const =0;
