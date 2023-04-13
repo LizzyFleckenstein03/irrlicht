@@ -78,6 +78,11 @@ namespace scene
 		//! returns amount of materials used by this scene node.
 		u32 getMaterialCount() const override;
 
+		//! Creates shadow volume scene node as child of this node
+		//! and returns a pointer to it.
+		virtual IShadowVolumeSceneNode* addShadowVolumeSceneNode(const IMesh* shadowMesh,
+			s32 id, bool zfailmethod=true, f32 infinity=1000.0f) override;
+
 		//! Returns a pointer to a child node, which has the same transformation as
 		//! the corresponding joint, if the mesh in this scene node is a skinned mesh.
 		IBoneSceneNode* getJointNode(const c8* jointName) override;
@@ -173,6 +178,8 @@ namespace scene
 
 		IAnimationEndCallBack* LoopCallBack;
 		s32 PassCount;
+
+		IShadowVolumeSceneNode* Shadow;
 
 		core::array<IBoneSceneNode* > JointChildSceneNodes;
 		core::array<core::matrix4> PretransitingSave;

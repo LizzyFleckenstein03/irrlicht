@@ -102,6 +102,7 @@ namespace scene
 	class IBillboardSceneNode;
 	class ICameraSceneNode;
 	class IDummyTransformationSceneNode;
+	class ILightSceneNode;
 	class IMesh;
 	class IMeshBuffer;
 	class IMeshCache;
@@ -112,6 +113,7 @@ namespace scene
 	class IMeshWriter;
 	class ISceneNode;
 	class ISceneNodeFactory;
+	class IShadowVolumeSceneNode;
 
 	//! The Scene Manager manages scene nodes, mesh resources, cameras and all the other stuff.
 	/** All Scene nodes can be created only here.
@@ -392,6 +394,24 @@ namespace scene
 			const core::vector3df& lookat = core::vector3df(0,0,100),
 			s32 id=-1, bool makeActive=true) = 0;
 
+		//! Adds a dynamic light scene node to the scene graph.
+		/** The light will cast dynamic light on all
+		other scene nodes in the scene, which have the material flag video::MTF_LIGHTING
+		turned on. (This is the default setting in most scene nodes).
+		\param parent: Parent scene node of the light. Can be null. If the parent moves,
+		the light will move too.
+		\param position: Position of the space relative to its parent where the light will be placed.
+		\param color: Diffuse color of the light. Ambient or Specular colors can be set manually with
+		the ILightSceneNode::getLightData() method.
+		\param radius: Radius of the light.
+		\param id: id of the node. This id can be used to identify the node.
+		\return Pointer to the interface of the light if successful, otherwise NULL.
+		This pointer should not be dropped. See IReferenceCounted::drop() for more information. */
+		virtual ILightSceneNode* addLightSceneNode(ISceneNode* parent = 0,
+			const core::vector3df& position = core::vector3df(0,0,0),
+			video::SColorf color = video::SColorf(1.0f, 1.0f, 1.0f),
+			f32 radius=100.0f, s32 id=-1) = 0;
+
 		//! Adds a billboard scene node to the scene graph.
 		/** A billboard is like a 3d sprite: A 2d element,
 		which always looks to the camera. It is usually used for things
@@ -492,6 +512,17 @@ namespace scene
 		/** The previous active camera will be deactivated.
 		\param camera: The new camera which should be active. */
 		virtual void setActiveCamera(ICameraSceneNode* camera) = 0;
+
+		//! Sets the color of stencil buffers shadows drawn by the scene manager.
+		virtual void setShadowColor(video::SColor color = video::SColor(150,0,0,0)) = 0;
+
+		//! Get the current color of shadows.
+		virtual video::SColor getShadowColor() const = 0;
+
+		//! Create a shadow volume scene node to be used with custom nodes
+		/** Use this if you implement your own SceneNodes and need shadow volumes in them.
+		Otherwise you should generally use addShadowVolumeSceneNode functions from IMeshSceneNode or IAnimatedMeshSceneNode.*/
+		virtual IShadowVolumeSceneNode* createShadowVolumeSceneNode(const IMesh* shadowMesh, ISceneNode* parent, s32 id, bool zfailmethod, f32 infinity) = 0;
 
 		//! Registers a node for rendering it at a specific time.
 		/** This method should only be used by SceneNodes when they get a

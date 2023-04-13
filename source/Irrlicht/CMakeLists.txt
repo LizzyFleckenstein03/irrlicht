@@ -70,6 +70,7 @@ endif()
 add_definitions(
 	-DIRR_ENABLE_BUILTIN_FONT
 	-D_IRR_COMPILE_WITH_SKINNED_MESH_SUPPORT_
+	-D_IRR_COMPILE_WITH_SHADOW_VOLUME_SCENENODE_
 )
 
 # Platform-specific configuration
@@ -349,6 +350,8 @@ add_library(IRROBJ OBJECT
 	CSceneCollisionManager.cpp
 	CSceneManager.cpp
 	CMeshCache.cpp
+	CLightSceneNode.cpp
+	CShadowVolumeSceneNode.cpp
 )
 
 set(IRRDRVROBJ

@@ -86,6 +86,14 @@ namespace scene
 			const core::vector3df& lookat = core::vector3df(0,0,100),
 			s32 id=-1, bool makeActive=true) override;
 
+		//! Adds a dynamic light scene node. The light will cast dynamic light on all
+		//! other scene nodes in the scene, which have the material flag video::MTF_LIGHTING
+		//! turned on. (This is the default setting in most scene nodes).
+		virtual ILightSceneNode* addLightSceneNode(ISceneNode* parent = 0,
+			const core::vector3df& position = core::vector3df(0,0,0),
+			video::SColorf color = video::SColorf(1.0f, 1.0f, 1.0f),
+			f32 range=100.0f, s32 id=-1) override;
+
 		//! Adds a billboard scene node to the scene. A billboard is like a 3d sprite: A 2d element,
 		//! which always looks to the camera. It is usually used for things like explosions, fire,
 		//! lensflares and things like that.
@@ -131,6 +139,15 @@ namespace scene
 
 		//! Returns a pointer to the mesh manipulator.
 		IMeshManipulator* getMeshManipulator() override;
+
+		//! Sets the color of stencil buffers shadows drawn by the scene manager.
+		virtual void setShadowColor(video::SColor color) override;
+
+		//! Returns the current color of shadows.
+		virtual video::SColor getShadowColor() const override;
+
+		//! Create a shadow volume scene node to be used with custom nodes
+		virtual IShadowVolumeSceneNode* createShadowVolumeSceneNode(const IMesh* shadowMesh, ISceneNode* parent, s32 id, bool zfailmethod, f32 infinity) override;
 
 		//! Adds a scene node to the deletion queue.
 		void addToDeletionQueue(ISceneNode* node) override;
@@ -245,6 +262,9 @@ namespace scene
 		//! sort on distance (sphere) to camera
 		struct DistanceNodeEntry
 		{
+			DistanceNodeEntry()
+			{ }
+
 			DistanceNodeEntry(ISceneNode* n, const core::vector3df& cameraPos)
 				: Node(n)
 			{
@@ -279,6 +299,8 @@ namespace scene
 
 		//! render pass lists
 		core::array<ISceneNode*> CameraList;
+		core::array<ISceneNode*> LightList;
+		core::array<ISceneNode*> ShadowNodeList;
 		core::array<ISceneNode*> SkyBoxList;
 		core::array<DefaultNodeEntry> SolidNodeList;
 		core::array<TransparentNodeEntry> TransparentNodeList;

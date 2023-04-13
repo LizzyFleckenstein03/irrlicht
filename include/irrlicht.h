@@ -105,6 +105,7 @@
 #include "ISceneManager.h"
 #include "ISceneNode.h"
 #include "IShaderConstantSetCallBack.h"
+#include "IShadowVolumeSceneNode.h"
 #include "ISkinnedMesh.h"
 #include "ITexture.h"
 #include "ITimer.h"

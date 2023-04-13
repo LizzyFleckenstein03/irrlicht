@@ -7,6 +7,11 @@
 #include "ISceneManager.h"
 #include "S3DVertex.h"
 #include "os.h"
+#ifdef _IRR_COMPILE_WITH_SHADOW_VOLUME_SCENENODE_
+#include "CShadowVolumeSceneNode.h"
+#else
+#include "IShadowVolumeSceneNode.h"
+#endif // _IRR_COMPILE_WITH_SHADOW_VOLUME_SCENENODE_
 #ifdef _IRR_COMPILE_WITH_SKINNED_MESH_SUPPORT_
 #include "CSkinnedMesh.h"
 #endif
@@ -38,7 +43,7 @@ CAnimatedMeshSceneNode::CAnimatedMeshSceneNode(IAnimatedMesh* mesh,
 	TransitionTime(0), Transiting(0.f), TransitingBlend(0.f),
 	JointMode(EJUOR_NONE), JointsUsed(false),
 	Looping(true), ReadOnlyMaterials(false), RenderFromIdentity(false),
-	LoopCallBack(0), PassCount(0)
+	LoopCallBack(0), PassCount(0), Shadow(0)
 {
 	#ifdef _DEBUG
 	setDebugName("CAnimatedMeshSceneNode");
@@ -51,6 +56,9 @@ CAnimatedMeshSceneNode::CAnimatedMeshSceneNode(IAnimatedMesh* mesh,
 //! destructor
 CAnimatedMeshSceneNode::~CAnimatedMeshSceneNode()
 {
+	if (Shadow)
+		Shadow->drop();
+
 	if (LoopCallBack)
 		LoopCallBack->drop();
 }
@@ -274,6 +282,9 @@ void CAnimatedMeshSceneNode::render()
 
 	driver->setTransform(video::ETS_WORLD, AbsoluteTransformation);
 
+	if (Shadow && PassCount==1)
+		Shadow->updateShadowVolumes();
+
 	// for debug purposes only:
 
 	bool renderMeshes = true;
@@ -493,6 +504,28 @@ u32 CAnimatedMeshSceneNode::getMaterialCount() const
 }
 
 
+//! Creates shadow volume scene node as child of this node
+//! and returns a pointer to it.
+IShadowVolumeSceneNode* CAnimatedMeshSceneNode::addShadowVolumeSceneNode(
+		const IMesh* shadowMesh, s32 id, bool zfailmethod, f32 infinity)
+{
+#ifdef _IRR_COMPILE_WITH_SHADOW_VOLUME_SCENENODE_
+	if (!SceneManager->getVideoDriver()->queryFeature(video::EVDF_STENCIL_BUFFER))
+		return 0;
+
+	if (!shadowMesh)
+		shadowMesh = Mesh; // if null is given, use the mesh of node
+
+	if (Shadow)
+		Shadow->drop();
+
+	Shadow = new CShadowVolumeSceneNode(shadowMesh, this, SceneManager, id,  zfailmethod, infinity);
+	return Shadow;
+#else
+	return 0;
+#endif
+}
+
 //! Returns a pointer to a child node, which has the same transformation as
 //! the corresponding joint, if the mesh in this scene node is a skinned mesh.
 IBoneSceneNode* CAnimatedMeshSceneNode::getJointNode(const c8* jointName)
@@ -581,6 +614,12 @@ u32 CAnimatedMeshSceneNode::getJointCount() const
 //! or to remove attached childs.
 bool CAnimatedMeshSceneNode::removeChild(ISceneNode* child)
 {
+	if (child && Shadow == child)
+	{
+		Shadow->drop();
+		Shadow = 0;
+	}
+
 	if (ISceneNode::removeChild(child))
 	{
 		if (JointsUsed) //stop weird bugs caused while changing parents as the joints are being created
@@ -902,6 +941,9 @@ ISceneNode* CAnimatedMeshSceneNode::clone(ISceneNode* newParent, ISceneManager* 
 	if (newNode->LoopCallBack)
 		newNode->LoopCallBack->grab();
 	newNode->PassCount = PassCount;
+	newNode->Shadow = Shadow;
+	if (newNode->Shadow)
+		newNode->Shadow->grab();
 	newNode->JointChildSceneNodes = JointChildSceneNodes;
 	newNode->PretransitingSave = PretransitingSave;
 	newNode->RenderFromIdentity = RenderFromIdentity;

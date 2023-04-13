@@ -21,8 +21,14 @@ namespace scene
 		//! of type CSceneManager (note that ISceneManager is not(!) an ISceneNode)
 		ESNT_SCENE_MANAGER  = MAKE_IRR_ID('s','m','n','g'),
 
+		//! Shadow Volume Scene Node
+		ESNT_SHADOW_VOLUME  = MAKE_IRR_ID('s','h','d','w'),
+
 		//! Mesh Scene Node
 		ESNT_MESH           = MAKE_IRR_ID('m','e','s','h'),
+
+		//! Light Scene Node
+		ESNT_LIGHT          = MAKE_IRR_ID('l','g','h','t'),
 
 		//! Empty Scene Node
 		ESNT_EMPTY          = MAKE_IRR_ID('e','m','t','y'),

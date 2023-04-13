@@ -41,6 +41,7 @@ namespace video
 	struct S3DVertex;
 	struct S3DVertex2TCoords;
 	struct S3DVertexTangents;
+	struct SLight;
 	class IImageLoader;
 	class IImageWriter;
 	class IMaterialRenderer;
@@ -844,6 +845,48 @@ namespace video
 					const core::position2d<s32>& end,
 					SColor color=SColor(255,255,255,255)) =0;
 
+		//! Draws a shadow volume into the stencil buffer.
+		/** To draw a stencil shadow, do this: First, draw all geometry.
+		Then use this method, to draw the shadow volume. Then, use
+		IVideoDriver::drawStencilShadow() to visualize the shadow.
+		Please note that the code for the opengl version of the method
+		is based on free code sent in by Philipp Dortmann, lots of
+		thanks go to him!
+		\param triangles Array of 3d vectors, specifying the shadow
+		volume.
+		\param zfail If set to true, zfail method is used, otherwise
+		zpass.
+		\param debugDataVisible The debug data that is enabled for this
+		shadow node
+		*/
+		virtual void drawStencilShadowVolume(const core::array<core::vector3df>& triangles, bool zfail=true, u32 debugDataVisible=0) =0;
+
+		//! Fills the stencil shadow with color.
+		/** After the shadow volume has been drawn into the stencil
+		buffer using IVideoDriver::drawStencilShadowVolume(), use this
+		to draw the color of the shadow.
+		Please note that the code for the opengl version of the method
+		is based on free code sent in by Philipp Dortmann, lots of
+		thanks go to him!
+		\param clearStencilBuffer Set this to false, if you want to
+		draw every shadow with the same color, and only want to call
+		drawStencilShadow() once after all shadow volumes have been
+		drawn. Set this to true, if you want to paint every shadow with
+		its own color.
+		\param leftUpEdge Color of the shadow in the upper left corner
+		of screen.
+		\param rightUpEdge Color of the shadow in the upper right
+		corner of screen.
+		\param leftDownEdge Color of the shadow in the lower left
+		corner of screen.
+		\param rightDownEdge Color of the shadow in the lower right
+		corner of screen. */
+		virtual void drawStencilShadow(bool clearStencilBuffer=false,
+			video::SColor leftUpEdge = video::SColor(255,0,0,0),
+			video::SColor rightUpEdge = video::SColor(255,0,0,0),
+			video::SColor leftDownEdge = video::SColor(255,0,0,0),
+			video::SColor rightDownEdge = video::SColor(255,0,0,0)) =0;
+
 		//! Draws a mesh buffer
 		/** \param mb Buffer to draw */
 		virtual void drawMeshBuffer(const scene::IMeshBuffer* mb) =0;
@@ -911,6 +954,33 @@ namespace video
 		counted per frame.
 		\return Amount of primitives drawn in the last frame. */
 		virtual u32 getPrimitiveCountDrawn( u32 mode =0 ) const =0;
+
+		//! Deletes all dynamic lights which were previously added with addDynamicLight().
+		virtual void deleteAllDynamicLights() =0;
+
+		//! adds a dynamic light, returning an index to the light
+		//! \param light: the light data to use to create the light
+		//! \return An index to the light, or -1 if an error occurs
+		virtual s32 addDynamicLight(const SLight& light) =0;
+
+		//! Returns the maximal amount of dynamic lights the device can handle
+		/** \return Maximal amount of dynamic lights. */
+		virtual u32 getMaximalDynamicLightAmount() const =0;
+
+		//! Returns amount of dynamic lights currently set
+		/** \return Amount of dynamic lights currently set */
+		virtual u32 getDynamicLightCount() const =0;
+
+		//! Returns light data which was previously set by IVideoDriver::addDynamicLight().
+		/** \param idx Zero based index of the light. Must be 0 or
+		greater and smaller than IVideoDriver::getDynamicLightCount.
+		\return Light data. */
+		virtual const SLight& getDynamicLight(u32 idx) const =0;
+
+		//! Turns a dynamic light on or off
+		//! \param lightIndex: the index returned by addDynamicLight
+		//! \param turnOn: true to turn the light on, false to turn it off
+		virtual void turnLightOn(s32 lightIndex, bool turnOn) =0;
 
 		//! Gets name of this video driver.
 		/** \return Returns the name of the video driver, e.g. in case

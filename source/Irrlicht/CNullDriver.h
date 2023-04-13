@@ -17,6 +17,7 @@
 #include "CFPSCounter.h"
 #include "S3DVertex.h"
 #include "SVertexIndex.h"
+#include "SLight.h"
 #include "SExposedVideoData.h"
 #include <list>
 
@@ -246,6 +247,22 @@ namespace video
 		//! very useful method for statistics.
 		u32 getPrimitiveCountDrawn( u32 param = 0 ) const override;
 
+		//! deletes all dynamic lights there are
+		virtual void deleteAllDynamicLights() override;
+
+		//! adds a dynamic light, returning an index to the light
+		//! \param light: the light data to use to create the light
+		//! \return An index to the light, or -1 if an error occurs
+		virtual s32 addDynamicLight(const SLight& light) override;
+
+		//! Turns a dynamic light on or off
+		//! \param lightIndex: the index returned by addDynamicLight
+		//! \param turnOn: true to turn the light on, false to turn it off
+		virtual void turnLightOn(s32 lightIndex, bool turnOn) override;
+
+		//! returns the maximal amount of dynamic lights the device can handle
+		virtual u32 getMaximalDynamicLightAmount() const override;
+
 		//! \return Returns the name of the video driver. Example: In case of the DIRECT3D8
 		//! driver, it would return "Direct3D8.1".
 		const wchar_t* getName() const override;
@@ -267,18 +284,27 @@ namespace video
 		//! Draws a shadow volume into the stencil buffer. To draw a stencil shadow, do
 		//! this: First, draw all geometry. Then use this method, to draw the shadow
 		//! volume. Then, use IVideoDriver::drawStencilShadow() to visualize the shadow.
-		[[deprecated]] virtual void drawStencilShadowVolume(const core::array<core::vector3df>& triangles,
-			bool zfail=true, u32 debugDataVisible=0) {}
+		virtual void drawStencilShadowVolume(const core::array<core::vector3df>& triangles,
+			bool zfail=true, u32 debugDataVisible=0) override;
 
 		//! Fills the stencil shadow with color. After the shadow volume has been drawn
 		//! into the stencil buffer using IVideoDriver::drawStencilShadowVolume(), use this
 		//! to draw the color of the shadow.
-		[[deprecated]] virtual void drawStencilShadow(bool clearStencilBuffer=false,
+		virtual void drawStencilShadow(bool clearStencilBuffer=false,
 			video::SColor leftUpEdge = video::SColor(0,0,0,0),
 			video::SColor rightUpEdge = video::SColor(0,0,0,0),
 			video::SColor leftDownEdge = video::SColor(0,0,0,0),
-			video::SColor rightDownEdge = video::SColor(0,0,0,0)) {}
+			video::SColor rightDownEdge = video::SColor(0,0,0,0)) override;
 
+		//! Returns current amount of dynamic lights set
+		//! \return Current amount of dynamic lights set
+		virtual u32 getDynamicLightCount() const override;
+
+		//! Returns light data which was previously set with IVideDriver::addDynamicLight().
+		//! \param idx: Zero based index of the light. Must be greater than 0 and smaller
+		//! than IVideoDriver()::getDynamicLightCount.
+		//! \return Light data.
+		virtual const SLight& getDynamicLight(u32 idx) const override;
 
 		//! Removes a texture from the texture cache and deletes it, freeing lot of
 		//! memory.
@@ -793,6 +819,7 @@ namespace video
 
 		core::array<video::IImageLoader*> SurfaceLoader;
 		core::array<video::IImageWriter*> SurfaceWriter;
+		core::array<SLight> Lights;
 		core::array<SMaterialRenderer> MaterialRenderers;
 
 		std::list<SHWBufferLink*> HWBufferList;

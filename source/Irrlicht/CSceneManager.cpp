@@ -21,7 +21,15 @@
 #include "CBillboardSceneNode.h"
 #include "CAnimatedMeshSceneNode.h"
 #include "CCameraSceneNode.h"
+#include "CLightSceneNode.h"
 #include "CMeshSceneNode.h"
+
+#ifdef _IRR_COMPILE_WITH_SHADOW_VOLUME_SCENENODE_
+#include "CShadowVolumeSceneNode.h"
+#else
+#include "IShadowVolumeSceneNode.h"
+#endif // _IRR_COMPILE_WITH_SHADOW_VOLUME_SCENENODE_
+
 #include "CDummyTransformationSceneNode.h"
 #include "CEmptySceneNode.h"
 
@@ -234,6 +242,22 @@ ICameraSceneNode* CSceneManager::addCameraSceneNode(ISceneNode* parent,
 }
 
 
+//! Adds a dynamic light scene node. The light will cast dynamic light on all
+//! other scene nodes in the scene, which have the material flag video::MTF_LIGHTING
+//! turned on. (This is the default setting in most scene nodes).
+ILightSceneNode* CSceneManager::addLightSceneNode(ISceneNode* parent,
+	const core::vector3df& position, video::SColorf color, f32 range, s32 id)
+{
+	if (!parent)
+		parent = this;
+
+	ILightSceneNode* node = new CLightSceneNode(parent, this, id, position, color, range);
+	node->drop();
+
+	return node;
+}
+
+
 //! Adds a billboard scene node to the scene. A billboard is like a 3d sprite: A 2d element,
 //! which always looks to the camera. It is usually used for things like explosions, fire,
 //! lensflares and things like that.
@@ -432,6 +456,15 @@ u32 CSceneManager::registerNodeForRendering(ISceneNode* node, E_SCENE_NODE_RENDE
 			}
 		}
 		break;
+	case ESNRP_LIGHT:
+		// TODO: Point Light culling..
+		// Lighting model in irrlicht has to be redone..
+		//if (!isCulled(node))
+		{
+			LightList.push_back(node);
+			taken = 1;
+		}
+		break;
 	case ESNRP_SKY_BOX:
 		SkyBoxList.push_back(node);
 		taken = 1;
@@ -483,6 +516,13 @@ u32 CSceneManager::registerNodeForRendering(ISceneNode* node, E_SCENE_NODE_RENDE
 			}
 		}
 		break;
+	case ESNRP_SHADOW:
+		if (!isCulled(node))
+		{
+			ShadowNodeList.push_back(node);
+			taken = 1;
+		}
+		break;
 	case ESNRP_GUI:
 		if (!isCulled(node))
 		{
@@ -490,9 +530,6 @@ u32 CSceneManager::registerNodeForRendering(ISceneNode* node, E_SCENE_NODE_RENDE
 			taken = 1;
 		}
 
-	// as of yet unused
-	case ESNRP_LIGHT:
-	case ESNRP_SHADOW:
 	case ESNRP_NONE: // ignore this one
 		break;
 	}
@@ -503,10 +540,12 @@ u32 CSceneManager::registerNodeForRendering(ISceneNode* node, E_SCENE_NODE_RENDE
 void CSceneManager::clearAllRegisteredNodesForRendering()
 {
 	CameraList.clear();
+	LightList.clear();
 	SkyBoxList.clear();
 	SolidNodeList.clear();
 	TransparentNodeList.clear();
 	TransparentEffectNodeList.clear();
+	ShadowNodeList.clear();
 	GuiNodeList.clear();
 }
 
@@ -557,6 +596,36 @@ void CSceneManager::drawAll()
 		CameraList.set_used(0);
 	}
 
+	//render lights scenes
+	{
+		CurrentRenderPass = ESNRP_LIGHT;
+		Driver->getOverrideMaterial().Enabled = ((Driver->getOverrideMaterial().EnablePasses & CurrentRenderPass) != 0);
+
+		core::vector3df camWorldPos(0, 0, 0);
+		if (ActiveCamera)
+			camWorldPos = ActiveCamera->getAbsolutePosition();
+
+		core::array<DistanceNodeEntry> SortedLights;
+		SortedLights.set_used(LightList.size());
+		for (s32 light = (s32)LightList.size() - 1; light >= 0; --light)
+			SortedLights[light].setNodeAndDistanceFromPosition(LightList[light], camWorldPos);
+
+		SortedLights.set_sorted(false);
+		SortedLights.sort();
+
+		for(s32 light = (s32)LightList.size() - 1; light >= 0; --light)
+			LightList[light] = SortedLights[light].Node;
+
+		Driver->deleteAllDynamicLights();
+
+		Driver->setAmbientLight(AmbientLight);
+
+		u32 maxLights = LightList.size();
+
+		for (i=0; i< maxLights; ++i)
+			LightList[i]->render();
+	}
+
 	// render skyboxes
 	{
 		CurrentRenderPass = ESNRP_SKY_BOX;
@@ -579,6 +648,21 @@ void CSceneManager::drawAll()
 			SolidNodeList[i].Node->render();
 
 		SolidNodeList.set_used(0);
+	}
+
+	// render shadows
+	{
+		CurrentRenderPass = ESNRP_SHADOW;
+		Driver->getOverrideMaterial().Enabled = ((Driver->getOverrideMaterial().EnablePasses & CurrentRenderPass) != 0);
+
+		for (i=0; i<ShadowNodeList.size(); ++i)
+			ShadowNodeList[i]->render();
+
+		if (!ShadowNodeList.empty())
+			Driver->drawStencilShadow(true,ShadowColor, ShadowColor,
+				ShadowColor, ShadowColor);
+
+		ShadowNodeList.set_used(0);
 	}
 
 	// render transparent objects.
@@ -616,10 +700,36 @@ void CSceneManager::drawAll()
 
 		GuiNodeList.set_used(0);
 	}
+
+	LightList.set_used(0);
 	clearDeletionList();
 
 	CurrentRenderPass = ESNRP_NONE;
 }
+
+
+//! Sets the color of stencil buffers shadows drawn by the scene manager.
+void CSceneManager::setShadowColor(video::SColor color)
+{
+	ShadowColor = color;
+}
+
+
+//! Returns the current color of shadows.
+video::SColor CSceneManager::getShadowColor() const
+{
+	return ShadowColor;
+}
+
+IShadowVolumeSceneNode* CSceneManager::createShadowVolumeSceneNode(const IMesh* shadowMesh, ISceneNode* parent, s32 id, bool zfailmethod, f32 infinity)
+{
+#ifdef _IRR_COMPILE_WITH_SHADOW_VOLUME_SCENENODE_
+	return new CShadowVolumeSceneNode(shadowMesh, parent, this, id, zfailmethod, infinity);
+#else
+	return 0;
+#endif
+}
+
 
 
 //! Adds an external mesh loader.
